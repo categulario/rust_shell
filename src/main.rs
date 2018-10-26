@@ -1,5 +1,8 @@
 use std::io::{self, BufRead, Write};
 
+mod parser;
+mod process;
+
 fn main() {
     let stdin = io::stdin();
 
@@ -9,7 +12,7 @@ fn main() {
 
         let mut buf = String::new();
 
-        stdin.lock().read_line(&mut buf);
+        stdin.lock().read_line(&mut buf).expect("Could not read from stdin");
 
         if buf.len() == 0 {
             println!();
