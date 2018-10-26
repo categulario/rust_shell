@@ -8,7 +8,12 @@ enum TokenType {
     Parenthesis,
 }
 
-pub fn parse(line: &String) -> Result<Vec<String>, &str> {
+#[derive(Debug,PartialEq)]
+pub enum ParseError {
+    UnterminatedQuote,
+}
+
+pub fn parse(line: &String) -> Result<Vec<String>, ParseError> {
     let mut tokens = Vec::new();
     let mut cur_token = String::new();
     let mut token_type = TokenType::Blank;
@@ -27,6 +32,7 @@ pub fn parse(line: &String) -> Result<Vec<String>, &str> {
                     cur_token.push(c);
                 }
             }
+
             TokenType::Word => {
                 if c.is_whitespace() {
                     token_type = TokenType::Blank;
@@ -36,6 +42,7 @@ pub fn parse(line: &String) -> Result<Vec<String>, &str> {
                     cur_token.push(c);
                 }
             }
+
             TokenType::DoubleQuotedString => {
                 if c == '"' {
                     token_type = TokenType::Blank;
@@ -46,6 +53,7 @@ pub fn parse(line: &String) -> Result<Vec<String>, &str> {
                     cur_token.push(c);
                 }
             }
+
             TokenType::SingleQuotedString => {
                 if c == '\'' {
                     token_type = TokenType::Blank;
@@ -60,6 +68,14 @@ pub fn parse(line: &String) -> Result<Vec<String>, &str> {
         }
     }
 
+    match token_type {
+        TokenType::SingleQuotedString |
+        TokenType::DoubleQuotedString => {
+            return Err(ParseError::UnterminatedQuote);
+        }
+        _ => {}
+    }
+
     if cur_token.len() > 0 {
         tokens.push(cur_token);
     }
@@ -71,27 +87,26 @@ pub fn parse(line: &String) -> Result<Vec<String>, &str> {
 fn test_parse_simple() {
     let line = String::from("ls -l");
 
-    assert_eq!(parse(&line), Ok(vec!["ls".to_string(), "-l".to_string()]));
+    assert_eq!(parse(&line).unwrap(), vec!["ls".to_string(), "-l".to_string()]);
 }
 
 #[test]
 fn test_parse_double_quote() {
     let line = String::from("echo \"hola mundo\"");
 
-    assert_eq!(parse(&line), Ok(vec!["echo".to_string(), "\"hola mundo\"".to_string()]));
+    assert_eq!(parse(&line).unwrap(), vec!["echo".to_string(), "\"hola mundo\"".to_string()]);
 }
 
 #[test]
 fn test_parse_single_quote() {
     let line = String::from("echo \'hola mundo\'");
 
-    assert_eq!(parse(&line), Ok(vec!["echo".to_string(), "\'hola mundo\'".to_string()]));
+    assert_eq!(parse(&line).unwrap(), vec!["echo".to_string(), "\'hola mundo\'".to_string()]);
 }
 
-// 1#[test]
-// 1#[ignore]
-// 1fn test_parse_matches_quotes() {
-    // 1let line = String::from("echo \"hola mundo\'");
+#[test]
+fn test_parse_unterminated_string() {
+    let line = String::from("echo \"hola mundo");
 
-    // 1assert_eq!(parse(&line), Err("Failed command line parsing"));
-// 1}
+    assert_eq!(parse(&line).unwrap_err(), ParseError::UnterminatedQuote);
+}
