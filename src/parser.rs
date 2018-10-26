@@ -6,6 +6,8 @@ enum TokenType {
     Or,
     And,
     Parenthesis,
+    Pipe,
+    Semicolon,
 }
 
 #[derive(Debug,PartialEq)]
