@@ -16,10 +16,11 @@ pub enum TokenType {
 pub enum ParseError {
     UnterminatedQuote,
     IncompleteAnd,
+    InvalidCharacter,
 }
 
 fn is_word(c: char) -> bool {
-    return c.is_ascii_alphanumeric() || c == '-';
+    return c.is_alphanumeric() || c == '-';
 }
 
 fn get_word<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> String {
@@ -103,10 +104,7 @@ pub fn parse(line: &String) -> Result<Vec<TokenType>, ParseError> {
     let mut it = line.chars().peekable();
 
     while let Some(&c) = it.peek() {
-        if is_word(c) {
-            let q = get_word(&mut it);
-            tokens.push(TokenType::Word(q));
-        } else if c == '"' {
+        if c == '"' {
             let q = get_double_quoted_string(&mut it)?;
             tokens.push(TokenType::DoubleQuotedString(q));
         } else if c == '\'' {
@@ -127,10 +125,13 @@ pub fn parse(line: &String) -> Result<Vec<TokenType>, ParseError> {
         } else if c == ')' {
             tokens.push(TokenType::Parenthesis(c));
             it.next();
+        } else if is_word(c) {
+            let q = get_word(&mut it);
+            tokens.push(TokenType::Word(q));
         } else if c.is_whitespace() {
             it.next();
         } else {
-            it.next();
+            return Err(ParseError::InvalidCharacter);
         }
     }
 
