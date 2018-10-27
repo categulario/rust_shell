@@ -1,4 +1,5 @@
 use std::iter::Peekable;
+use std::iter::Iterator;
 
 #[derive(Debug,PartialEq)]
 pub enum TokenType {
@@ -100,7 +101,6 @@ fn get_or_pipe<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> TokenType {
 
 pub fn parse(line: &String) -> Result<Vec<TokenType>, ParseError> {
     let mut tokens = Vec::new();
-
     let mut it = line.chars().peekable();
 
     while let Some(&c) = it.peek() {
