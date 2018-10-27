@@ -7,7 +7,7 @@ pub enum GrammarError {
 }
 
 trait FromTokens<T> {
-    fn from_tokens<U: Iterator<Item = TokenType>>(tokens: &mut Peekable<U>) -> Result<T, GrammarError>;
+    fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<T, GrammarError>;
 }
 
 #[derive(Debug,PartialEq)]
@@ -23,11 +23,11 @@ pub struct CallExpr {
 }
 
 impl FromTokens<CallExpr> for CallExpr {
-    fn from_tokens<U: Iterator<Item = TokenType>>(tokens: &mut Peekable<U>) -> Result<CallExpr, GrammarError> {
+    fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<CallExpr, GrammarError> {
         match tokens.peek() {
-            Some(&prog_name@TokenType::Word(_)) => {
+            Some(&TokenType::Word(s)) => {
                 Ok(CallExpr{
-                    value: CallExprOptions::ProgCall(prog_name, vec![])
+                    value: CallExprOptions::ProgCall(TokenType::Word(s.clone()), vec![])
                 })
             }
             None => {
@@ -54,7 +54,7 @@ pub struct OrExpr {
 }
 
 impl FromTokens<OrExpr> for OrExpr {
-    fn from_tokens<U: Iterator<Item = TokenType>>(tokens: &mut Peekable<U>) -> Result<OrExpr, GrammarError> {
+    fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<OrExpr, GrammarError> {
         return Ok(OrExpr{
             value: OrExprOptions::SingleExpr(CallExpr::from_tokens(tokens)?),
         });
@@ -73,7 +73,7 @@ pub struct AndExpr {
 }
 
 impl FromTokens<AndExpr> for AndExpr {
-    fn from_tokens<U: Iterator<Item = TokenType>>(tokens: &mut Peekable<U>) -> Result<AndExpr, GrammarError> {
+    fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<AndExpr, GrammarError> {
         return Ok(AndExpr{
             value: AndExprOptions::SingleExpr(OrExpr::from_tokens(tokens)?),
         });
@@ -92,7 +92,7 @@ pub struct SemicolonExpr {
 }
 
 impl FromTokens<SemicolonExpr> for SemicolonExpr {
-    fn from_tokens<U: Iterator<Item = TokenType>>(tokens: &mut Peekable<U>) -> Result<SemicolonExpr, GrammarError> {
+    fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<SemicolonExpr, GrammarError> {
         return Ok(SemicolonExpr{
             value: SemicolonExprOptions::SingleExpr(AndExpr::from_tokens(tokens)?),
         });
@@ -105,7 +105,7 @@ pub struct Expr {
 }
 
 impl FromTokens<Expr> for Expr {
-    fn from_tokens<U: Iterator<Item = TokenType>>(tokens: &mut Peekable<U>) -> Result<Expr, GrammarError> {
+    fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<Expr, GrammarError> {
         return Ok(Expr{
             value: SemicolonExpr::from_tokens(tokens)?,
         });
