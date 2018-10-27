@@ -7,7 +7,6 @@ enum TokenType {
     And,
     Parenthesis,
     Pipe,
-    Semicolon,
 }
 
 #[derive(Debug,PartialEq)]
@@ -29,6 +28,10 @@ pub fn parse(line: &String) -> Result<Vec<String>, ParseError> {
                 } else if c == '\'' {
                     token_type = TokenType::SingleQuotedString;
                     cur_token.push(c);
+                } else if c == ';' {
+                    cur_token.push(c);
+                    tokens.push(cur_token.clone());
+                    cur_token = String::new();
                 } else if !c.is_whitespace() {
                     token_type = TokenType::Word;
                     cur_token.push(c);
@@ -38,6 +41,12 @@ pub fn parse(line: &String) -> Result<Vec<String>, ParseError> {
             TokenType::Word => {
                 if c.is_whitespace() {
                     token_type = TokenType::Blank;
+                    tokens.push(cur_token.clone());
+                    cur_token = String::new();
+                } else if c == ';' {
+                    token_type = TokenType::Blank;
+                    tokens.push(cur_token.clone());
+                    cur_token = String::from(format!("{}", c));
                     tokens.push(cur_token.clone());
                     cur_token = String::new();
                 } else if c.is_ascii_alphanumeric() {
@@ -104,6 +113,13 @@ fn test_parse_single_quote() {
     let line = String::from("echo \'hola mundo\'");
 
     assert_eq!(parse(&line).unwrap(), vec!["echo".to_string(), "\'hola mundo\'".to_string()]);
+}
+
+#[test]
+fn test_parse_semicolon() {
+    let line = String::from("ls;cd");
+
+    assert_eq!(parse(&line).unwrap(), vec!["ls".to_string(), ";".to_string(), "cd".to_string()]);
 }
 
 #[test]
