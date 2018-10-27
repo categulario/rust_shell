@@ -26,8 +26,32 @@ impl FromTokens<CallExpr> for CallExpr {
     fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<CallExpr, GrammarError> {
         match tokens.peek() {
             Some(&TokenType::Word(s)) => {
+                tokens.next();
+
+                let mut args = Vec::new();
+
+                loop {
+                    match tokens.peek() {
+                        Some(&TokenType::Word(s)) => {
+                            tokens.next();
+                            args.push(TokenType::Word(s.clone()));
+                        }
+                        Some(&TokenType::DoubleQuotedString(s)) => {
+                            tokens.next();
+                            args.push(TokenType::DoubleQuotedString(s.clone()));
+                        }
+                        Some(&TokenType::SingleQuotedString(s)) => {
+                            tokens.next();
+                            args.push(TokenType::SingleQuotedString(s.clone()));
+                        }
+                        _ => {
+                            break;
+                        }
+                    }
+                }
+
                 Ok(CallExpr{
-                    value: CallExprOptions::ProgCall(TokenType::Word(s.clone()), vec![])
+                    value: CallExprOptions::ProgCall(TokenType::Word(s.clone()), args)
                 })
             }
             None => {
