@@ -15,6 +15,7 @@ pub enum TokenType {
 #[derive(Debug,PartialEq)]
 pub enum ParseError {
     UnterminatedQuote,
+    IncompleteAnd,
 }
 
 fn is_word(c: char) -> bool {
@@ -72,6 +73,30 @@ fn get_single_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) ->
     Err(ParseError::UnterminatedQuote)
 }
 
+fn get_and<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> Result<TokenType, ParseError> {
+    iter.next();
+
+    match iter.peek() {
+        Some(&'&') => {
+            iter.next();
+            Ok(TokenType::And)
+        }
+        _ => Err(ParseError::IncompleteAnd),
+    }
+}
+
+fn get_or_pipe<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> TokenType {
+    iter.next();
+
+    match iter.peek() {
+        Some(&'|') => {
+            iter.next();
+            TokenType::Or
+        }
+        _ => TokenType::Pipe,
+    }
+}
+
 pub fn parse(line: &String) -> Result<Vec<TokenType>, ParseError> {
     let mut tokens = Vec::new();
 
@@ -87,8 +112,20 @@ pub fn parse(line: &String) -> Result<Vec<TokenType>, ParseError> {
         } else if c == '\'' {
             let q = get_single_quoted_string(&mut it)?;
             tokens.push(TokenType::SingleQuotedString(q));
+        } else if c == '&' {
+            let q = get_and(&mut it)?;
+            tokens.push(q);
+        } else if c == '|' {
+            let q = get_or_pipe(&mut it);
+            tokens.push(q);
         } else if c == ';' {
             tokens.push(TokenType::Semicolon);
+            it.next();
+        } else if c == '(' {
+            tokens.push(TokenType::Parenthesis(c));
+            it.next();
+        } else if c == ')' {
+            tokens.push(TokenType::Parenthesis(c));
             it.next();
         } else if c.is_whitespace() {
             it.next();
@@ -133,6 +170,42 @@ fn test_parse_semicolon() {
 
     assert_eq!(parse(&line).unwrap(), vec![
         TokenType::Word("ls".to_string()), TokenType::Semicolon, TokenType::Word("cd".to_string())
+    ]);
+}
+
+#[test]
+fn test_parse_and() {
+    let line = String::from("ls&&cd");
+
+    assert_eq!(parse(&line).unwrap(), vec![
+        TokenType::Word("ls".to_string()), TokenType::And, TokenType::Word("cd".to_string())
+    ]);
+}
+
+#[test]
+fn test_parse_or() {
+    let line = String::from("ls||cd");
+
+    assert_eq!(parse(&line).unwrap(), vec![
+        TokenType::Word("ls".to_string()), TokenType::Or, TokenType::Word("cd".to_string())
+    ]);
+}
+
+#[test]
+fn test_parse_pipe() {
+    let line = String::from("ls | grep foo");
+
+    assert_eq!(parse(&line).unwrap(), vec![
+        TokenType::Word("ls".to_string()), TokenType::Pipe, TokenType::Word("grep".to_string()), TokenType::Word("foo".to_string())
+    ]);
+}
+
+#[test]
+fn test_parse_parenthesis() {
+    let line = String::from("()");
+
+    assert_eq!(parse(&line).unwrap(), vec![
+            TokenType::Parenthesis('('), TokenType::Parenthesis(')')
     ]);
 }
 
