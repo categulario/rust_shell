@@ -54,7 +54,7 @@ fn get_double_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) ->
     Err(ParseError::UnterminatedQuote)
 }
 
-fn get_single_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> String {
+fn get_single_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> Result<String, ParseError> {
     let mut result = String::from("\'");
     iter.next();
 
@@ -62,14 +62,14 @@ fn get_single_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) ->
         if c == '\'' {
             result.push(c);
             iter.next();
-            break;
+            return Ok(result);
         }
 
         result.push(c);
         iter.next();
     }
 
-    result
+    Err(ParseError::UnterminatedQuote)
 }
 
 pub fn parse(line: &String) -> Result<Vec<TokenType>, ParseError> {
@@ -85,7 +85,7 @@ pub fn parse(line: &String) -> Result<Vec<TokenType>, ParseError> {
             let q = get_double_quoted_string(&mut it)?;
             tokens.push(TokenType::DoubleQuotedString(q));
         } else if c == '\'' {
-            let q = get_single_quoted_string(&mut it);
+            let q = get_single_quoted_string(&mut it)?;
             tokens.push(TokenType::SingleQuotedString(q));
         } else if c == ';' {
             tokens.push(TokenType::Semicolon);
@@ -137,8 +137,15 @@ fn test_parse_semicolon() {
 }
 
 #[test]
-fn test_parse_unterminated_string() {
+fn test_parse_unterminated_double_quote() {
     let line = String::from("echo \"hola mundo");
+
+    assert_eq!(parse(&line).unwrap_err(), ParseError::UnterminatedQuote);
+}
+
+#[test]
+fn test_parse_unterminated_single_quote() {
+    let line = String::from("echo \'hola mundo");
 
     assert_eq!(parse(&line).unwrap_err(), ParseError::UnterminatedQuote);
 }
