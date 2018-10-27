@@ -107,7 +107,7 @@ pub struct Expr {
 impl FromTokens<Expr> for Expr {
     fn from_tokens<U: Iterator<Item = TokenType>>(tokens: &mut Peekable<U>) -> Result<Expr, GrammarError> {
         return Ok(Expr{
-            value: SemicolonExpr::from_tokens(&mut tokens)?,
+            value: SemicolonExpr::from_tokens(tokens)?,
         });
     }
 }
