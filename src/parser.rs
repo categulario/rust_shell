@@ -1,12 +1,15 @@
-enum TokenType {
-    Word,
-    DoubleQuotedString,
-    SingleQuotedString,
-    Blank,
+use std::iter::Peekable;
+
+#[derive(Debug,PartialEq)]
+pub enum TokenType {
+    Word(String),
+    DoubleQuotedString(String),
+    SingleQuotedString(String),
     Or,
     And,
-    Parenthesis,
+    Parenthesis(char),
     Pipe,
+    Semicolon,
 }
 
 #[derive(Debug,PartialEq)]
@@ -14,81 +17,84 @@ pub enum ParseError {
     UnterminatedQuote,
 }
 
-pub fn parse(line: &String) -> Result<Vec<String>, ParseError> {
+fn is_word(c: char) -> bool {
+    return c.is_ascii_alphanumeric() || c == '-';
+}
+
+fn get_word<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> String {
+    let mut result = String::new();
+
+    while let Some(&c) = iter.peek() {
+        if !is_word(c) {
+            break;
+        }
+
+        result.push(c);
+        iter.next();
+    }
+
+    result
+}
+
+fn get_double_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> Result<String, ParseError> {
+    let mut result = String::from("\"");
+    iter.next();
+
+    while let Some(&c) = iter.peek() {
+        if c == '"' {
+            result.push(c);
+            iter.next();
+            return Ok(result);
+        }
+
+        result.push(c);
+        iter.next();
+    }
+
+    Err(ParseError::UnterminatedQuote)
+}
+
+fn get_single_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> String {
+    let mut result = String::from("\'");
+    iter.next();
+
+    while let Some(&c) = iter.peek() {
+        if c == '\'' {
+            result.push(c);
+            iter.next();
+            break;
+        }
+
+        result.push(c);
+        iter.next();
+    }
+
+    result
+}
+
+pub fn parse(line: &String) -> Result<Vec<TokenType>, ParseError> {
     let mut tokens = Vec::new();
-    let mut cur_token = String::new();
-    let mut token_type = TokenType::Blank;
 
-    for c in line.chars() {
-        match token_type {
-            TokenType::Blank => {
-                if c == '"' {
-                    token_type = TokenType::DoubleQuotedString;
-                    cur_token.push(c);
-                } else if c == '\'' {
-                    token_type = TokenType::SingleQuotedString;
-                    cur_token.push(c);
-                } else if c == ';' {
-                    cur_token.push(c);
-                    tokens.push(cur_token.clone());
-                    cur_token = String::new();
-                } else if !c.is_whitespace() {
-                    token_type = TokenType::Word;
-                    cur_token.push(c);
-                }
-            }
+    let mut it = line.chars().peekable();
 
-            TokenType::Word => {
-                if c.is_whitespace() {
-                    token_type = TokenType::Blank;
-                    tokens.push(cur_token.clone());
-                    cur_token = String::new();
-                } else if c == ';' {
-                    token_type = TokenType::Blank;
-                    tokens.push(cur_token.clone());
-                    cur_token = String::from(format!("{}", c));
-                    tokens.push(cur_token.clone());
-                    cur_token = String::new();
-                } else if c.is_ascii_alphanumeric() {
-                    cur_token.push(c);
-                }
-            }
-
-            TokenType::DoubleQuotedString => {
-                if c == '"' {
-                    token_type = TokenType::Blank;
-                    cur_token.push(c);
-                    tokens.push(cur_token.clone());
-                    cur_token = String::new();
-                } else {
-                    cur_token.push(c);
-                }
-            }
-
-            TokenType::SingleQuotedString => {
-                if c == '\'' {
-                    token_type = TokenType::Blank;
-                    cur_token.push(c);
-                    tokens.push(cur_token.clone());
-                    cur_token = String::new();
-                } else {
-                    cur_token.push(c);
-                }
-            }
-            _ => {}
+    while let Some(&c) = it.peek() {
+        if is_word(c) {
+            let q = get_word(&mut it);
+            tokens.push(TokenType::Word(q));
+        } else if c == '"' {
+            let q = get_double_quoted_string(&mut it)?;
+            tokens.push(TokenType::DoubleQuotedString(q));
+        } else if c == '\'' {
+            let q = get_single_quoted_string(&mut it);
+            tokens.push(TokenType::SingleQuotedString(q));
+        } else if c == ';' {
+            tokens.push(TokenType::Semicolon);
+            it.next();
+        } else if c.is_whitespace() {
+            it.next();
+        } else {
+            it.next();
         }
-    }
-
-    match token_type {
-        TokenType::SingleQuotedString |
-        TokenType::DoubleQuotedString => {
-            return Err(ParseError::UnterminatedQuote);
-        }
-        _ => {}
-    }
-
-    if cur_token.len() > 0 {
-        tokens.push(cur_token);
     }
 
     Ok(tokens)
@@ -98,28 +104,36 @@ pub fn parse(line: &String) -> Result<Vec<String>, ParseError> {
 fn test_parse_simple() {
     let line = String::from("ls -l");
 
-    assert_eq!(parse(&line).unwrap(), vec!["ls".to_string(), "-l".to_string()]);
+    assert_eq!(parse(&line).unwrap(), vec![
+        TokenType::Word("ls".to_string()), TokenType::Word("-l".to_string())
+    ]);
 }
 
 #[test]
 fn test_parse_double_quote() {
     let line = String::from("echo \"hola mundo\"");
 
-    assert_eq!(parse(&line).unwrap(), vec!["echo".to_string(), "\"hola mundo\"".to_string()]);
+    assert_eq!(parse(&line).unwrap(), vec![
+        TokenType::Word("echo".to_string()), TokenType::DoubleQuotedString("\"hola mundo\"".to_string())
+    ]);
 }
 
 #[test]
 fn test_parse_single_quote() {
     let line = String::from("echo \'hola mundo\'");
 
-    assert_eq!(parse(&line).unwrap(), vec!["echo".to_string(), "\'hola mundo\'".to_string()]);
+    assert_eq!(parse(&line).unwrap(), vec![
+        TokenType::Word("echo".to_string()), TokenType::SingleQuotedString("\'hola mundo\'".to_string())
+    ]);
 }
 
 #[test]
 fn test_parse_semicolon() {
     let line = String::from("ls;cd");
 
-    assert_eq!(parse(&line).unwrap(), vec!["ls".to_string(), ";".to_string(), "cd".to_string()]);
+    assert_eq!(parse(&line).unwrap(), vec![
+        TokenType::Word("ls".to_string()), TokenType::Semicolon, TokenType::Word("cd".to_string())
+    ]);
 }
 
 #[test]
