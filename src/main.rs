@@ -2,6 +2,7 @@ use std::io::{self, BufRead, Write};
 use std::env::current_dir;
 
 mod parser;
+mod tree;
 mod process;
 
 fn main() {
