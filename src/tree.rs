@@ -98,9 +98,22 @@ pub struct AndExpr {
 
 impl FromTokens<AndExpr> for AndExpr {
     fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<AndExpr, GrammarError> {
-        return Ok(AndExpr{
-            value: AndExprOptions::SingleExpr(OrExpr::from_tokens(tokens)?),
-        });
+        let or_expr = OrExpr::from_tokens(tokens)?;
+
+        match tokens.peek() {
+            Some(&TokenType::And) => {
+                tokens.next();
+
+                Ok(AndExpr{
+                    value: AndExprOptions::And(or_expr, Box::new(AndExpr::from_tokens(tokens)?)),
+                })
+            }
+            _ => {
+                Ok(AndExpr{
+                    value: AndExprOptions::SingleExpr(or_expr),
+                })
+            }
+        }
     }
 }
 
@@ -155,6 +168,37 @@ fn test_simple_tree() {
                         ),
                     }),
                 }),
+            }),
+        },
+    });
+}
+
+#[test]
+fn test_and() {
+    let tokens = [
+        TokenType::Word("ls".to_string()), TokenType::And, TokenType::Word("ls".to_string())
+    ];
+
+    let mut it = tokens.iter().peekable();
+
+    assert_eq!(Expr::from_tokens(&mut it).unwrap(), Expr{
+        value: SemicolonExpr{
+            value: SemicolonExprOptions::SingleExpr(AndExpr{
+                value: AndExprOptions::And(OrExpr{
+                    value: OrExprOptions::SingleExpr(CallExpr{
+                        value: CallExprOptions::ProgCall(
+                            TokenType::Word("ls".to_string()), vec![]
+                        ),
+                    }),
+                }, Box::new(AndExpr{
+                    value: AndExprOptions::SingleExpr(OrExpr{
+                        value: OrExprOptions::SingleExpr(CallExpr{
+                            value: CallExprOptions::ProgCall(
+                                TokenType::Word("ls".to_string()), vec![]
+                            ),
+                        })
+                    }),
+                })),
             }),
         },
     });
