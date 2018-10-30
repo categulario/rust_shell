@@ -79,9 +79,25 @@ pub struct OrExpr {
 
 impl FromTokens<OrExpr> for OrExpr {
     fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<OrExpr, GrammarError> {
-        return Ok(OrExpr{
-            value: OrExprOptions::SingleExpr(CallExpr::from_tokens(tokens)?),
-        });
+        // return Ok(OrExpr{
+            // value: OrExprOptions::SingleExpr(CallExpr::from_tokens(tokens)?),
+        // });
+        let call_expr = CallExpr::from_tokens(tokens)?;
+
+        match tokens.peek() {
+            Some(&TokenType::Or) => {
+                tokens.next();
+
+                Ok(OrExpr{
+                    value: OrExprOptions::Or(call_expr, Box::new(OrExpr::from_tokens(tokens)?)),
+                })
+            }
+            _ => {
+                Ok(OrExpr{
+                    value: OrExprOptions::SingleExpr(call_expr),
+                })
+            }
+        }
     }
 }
 
@@ -199,6 +215,35 @@ fn test_and() {
                         })
                     }),
                 })),
+            }),
+        },
+    });
+}
+
+#[test]
+fn test_or() {
+    let tokens = [
+        TokenType::Word("ls".to_string()), TokenType::Or, TokenType::Word("ls".to_string())
+    ];
+
+    let mut it = tokens.iter().peekable();
+
+    assert_eq!(Expr::from_tokens(&mut it).unwrap(), Expr{
+        value: SemicolonExpr{
+            value: SemicolonExprOptions::SingleExpr(AndExpr{
+                value: AndExprOptions::SingleExpr(OrExpr{
+                    value: OrExprOptions::Or(CallExpr{
+                        value: CallExprOptions::ProgCall(
+                            TokenType::Word("ls".to_string()), vec![]
+                        ),
+                    }, Box::new(OrExpr{
+                        value: OrExprOptions::SingleExpr(CallExpr{
+                            value: CallExprOptions::ProgCall(
+                                TokenType::Word("ls".to_string()), vec![]
+                            ),
+                        }),
+                    })),
+                }),
             }),
         },
     });
