@@ -146,9 +146,22 @@ pub struct SemicolonExpr {
 
 impl FromTokens<SemicolonExpr> for SemicolonExpr {
     fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<SemicolonExpr, GrammarError> {
-        return Ok(SemicolonExpr{
-            value: SemicolonExprOptions::SingleExpr(AndExpr::from_tokens(tokens)?),
-        });
+        let and_expr = AndExpr::from_tokens(tokens)?;
+
+        match tokens.peek() {
+            Some(&TokenType::Semicolon) => {
+                tokens.next();
+
+                Ok(SemicolonExpr{
+                    value: SemicolonExprOptions::Semicolon(and_expr, Box::new(SemicolonExpr::from_tokens(tokens)?)),
+                })
+            }
+            _ => {
+                Ok(SemicolonExpr{
+                    value: SemicolonExprOptions::SingleExpr(and_expr),
+                })
+            }
+        }
     }
 }
 
@@ -245,6 +258,39 @@ fn test_or() {
                     })),
                 }),
             }),
+        },
+    });
+}
+
+#[test]
+fn test_semicolon() {
+    let tokens = [
+        TokenType::Word("ls".to_string()), TokenType::Semicolon, TokenType::Word("ls".to_string())
+    ];
+
+    let mut it = tokens.iter().peekable();
+
+    assert_eq!(Expr::from_tokens(&mut it).unwrap(), Expr{
+        value: SemicolonExpr{
+            value: SemicolonExprOptions::Semicolon(AndExpr{
+                value: AndExprOptions::SingleExpr(OrExpr{
+                    value: OrExprOptions::SingleExpr(CallExpr{
+                        value: CallExprOptions::ProgCall(
+                            TokenType::Word("ls".to_string()), vec![]
+                        ),
+                    }),
+                }),
+            }, Box::new(SemicolonExpr{
+                value: SemicolonExprOptions::SingleExpr(AndExpr{
+                    value: AndExprOptions::SingleExpr(OrExpr{
+                        value: OrExprOptions::SingleExpr(CallExpr{
+                            value: CallExprOptions::ProgCall(
+                                TokenType::Word("ls".to_string()), vec![]
+                            ),
+                        }),
+                    }),
+                }),
+            })),
         },
     });
 }
