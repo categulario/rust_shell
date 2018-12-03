@@ -1,9 +1,9 @@
-use std::io::{self, BufRead, Write};
 use std::env::current_dir;
+use std::io::{self, BufRead, Write};
 
 mod parser;
-mod tree;
 mod process;
+mod tree;
 
 fn main() {
     let stdin = io::stdin();
@@ -18,7 +18,10 @@ fn main() {
 
         let mut buf = String::new();
 
-        stdin.lock().read_line(&mut buf).expect("Could not read from stdin");
+        stdin
+            .lock()
+            .read_line(&mut buf)
+            .expect("Could not read from stdin");
 
         if buf.len() == 0 {
             println!();

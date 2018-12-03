@@ -1,7 +1,7 @@
-use std::iter::Peekable;
 use std::iter::Iterator;
+use std::iter::Peekable;
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum TokenType {
     Word(String),
     DoubleQuotedString(String),
@@ -13,7 +13,7 @@ pub enum TokenType {
     Semicolon,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ParseError {
     UnterminatedQuote,
     IncompleteAnd,
@@ -39,7 +39,9 @@ fn get_word<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> String {
     result
 }
 
-fn get_double_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> Result<String, ParseError> {
+fn get_double_quoted_string<T: Iterator<Item = char>>(
+    iter: &mut Peekable<T>,
+) -> Result<String, ParseError> {
     let mut result = String::from("\"");
     iter.next();
 
@@ -57,7 +59,9 @@ fn get_double_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) ->
     Err(ParseError::UnterminatedQuote)
 }
 
-fn get_single_quoted_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> Result<String, ParseError> {
+fn get_single_quoted_string<T: Iterator<Item = char>>(
+    iter: &mut Peekable<T>,
+) -> Result<String, ParseError> {
     let mut result = String::from("\'");
     iter.next();
 
@@ -142,72 +146,106 @@ pub fn parse(line: &String) -> Result<Vec<TokenType>, ParseError> {
 fn test_parse_simple() {
     let line = String::from("ls -l");
 
-    assert_eq!(parse(&line).unwrap(), vec![
-        TokenType::Word("ls".to_string()), TokenType::Word("-l".to_string())
-    ]);
+    assert_eq!(
+        parse(&line).unwrap(),
+        vec![
+            TokenType::Word("ls".to_string()),
+            TokenType::Word("-l".to_string())
+        ]
+    );
 }
 
 #[test]
 fn test_parse_double_quote() {
     let line = String::from("echo \"hola mundo\"");
 
-    assert_eq!(parse(&line).unwrap(), vec![
-        TokenType::Word("echo".to_string()), TokenType::DoubleQuotedString("\"hola mundo\"".to_string())
-    ]);
+    assert_eq!(
+        parse(&line).unwrap(),
+        vec![
+            TokenType::Word("echo".to_string()),
+            TokenType::DoubleQuotedString("\"hola mundo\"".to_string())
+        ]
+    );
 }
 
 #[test]
 fn test_parse_single_quote() {
     let line = String::from("echo \'hola mundo\'");
 
-    assert_eq!(parse(&line).unwrap(), vec![
-        TokenType::Word("echo".to_string()), TokenType::SingleQuotedString("\'hola mundo\'".to_string())
-    ]);
+    assert_eq!(
+        parse(&line).unwrap(),
+        vec![
+            TokenType::Word("echo".to_string()),
+            TokenType::SingleQuotedString("\'hola mundo\'".to_string())
+        ]
+    );
 }
 
 #[test]
 fn test_parse_semicolon() {
     let line = String::from("ls;cd");
 
-    assert_eq!(parse(&line).unwrap(), vec![
-        TokenType::Word("ls".to_string()), TokenType::Semicolon, TokenType::Word("cd".to_string())
-    ]);
+    assert_eq!(
+        parse(&line).unwrap(),
+        vec![
+            TokenType::Word("ls".to_string()),
+            TokenType::Semicolon,
+            TokenType::Word("cd".to_string())
+        ]
+    );
 }
 
 #[test]
 fn test_parse_and() {
     let line = String::from("ls&&cd");
 
-    assert_eq!(parse(&line).unwrap(), vec![
-        TokenType::Word("ls".to_string()), TokenType::And, TokenType::Word("cd".to_string())
-    ]);
+    assert_eq!(
+        parse(&line).unwrap(),
+        vec![
+            TokenType::Word("ls".to_string()),
+            TokenType::And,
+            TokenType::Word("cd".to_string())
+        ]
+    );
 }
 
 #[test]
 fn test_parse_or() {
     let line = String::from("ls||cd");
 
-    assert_eq!(parse(&line).unwrap(), vec![
-        TokenType::Word("ls".to_string()), TokenType::Or, TokenType::Word("cd".to_string())
-    ]);
+    assert_eq!(
+        parse(&line).unwrap(),
+        vec![
+            TokenType::Word("ls".to_string()),
+            TokenType::Or,
+            TokenType::Word("cd".to_string())
+        ]
+    );
 }
 
 #[test]
 fn test_parse_pipe() {
     let line = String::from("ls | grep foo");
 
-    assert_eq!(parse(&line).unwrap(), vec![
-        TokenType::Word("ls".to_string()), TokenType::Pipe, TokenType::Word("grep".to_string()), TokenType::Word("foo".to_string())
-    ]);
+    assert_eq!(
+        parse(&line).unwrap(),
+        vec![
+            TokenType::Word("ls".to_string()),
+            TokenType::Pipe,
+            TokenType::Word("grep".to_string()),
+            TokenType::Word("foo".to_string())
+        ]
+    );
 }
 
 #[test]
 fn test_parse_parenthesis() {
     let line = String::from("()");
 
-    assert_eq!(parse(&line).unwrap(), vec![
-            TokenType::Parenthesis('('), TokenType::Parenthesis(')')
-    ]);
+    assert_eq!(
+        parse(&line).unwrap(),
+        vec![TokenType::Parenthesis('('), TokenType::Parenthesis(')')]
+    );
 }
 
 #[test]
