@@ -24,8 +24,7 @@ fn main() {
             println!();
             break;
         }
-        
-        //println!("{:?}", buf.split_whitespace());
+
         process::receive_command(&mut buf.split_whitespace().collect());
     }
 }

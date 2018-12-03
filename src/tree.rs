@@ -4,6 +4,7 @@ use std::iter::Peekable;
 #[derive(Debug,PartialEq)]
 pub enum GrammarError {
     InvalidCmdStart,
+    MismatchedParenthesis,
 }
 
 trait FromTokens<T> {
@@ -54,6 +55,22 @@ impl FromTokens<CallExpr> for CallExpr {
                     value: CallExprOptions::ProgCall(TokenType::Word(s.clone()), args)
                 })
             }
+            Some(&TokenType::Parenthesis('(')) => {
+                tokens.next();
+
+                let inner_expr = Expr::from_tokens(tokens)?;
+
+                match tokens.peek() {
+                    Some(&TokenType::Parenthesis(')')) => {
+                        Ok(CallExpr{
+                            value: CallExprOptions::Parenthesis(Box::new(inner_expr)),
+                        })
+                    }
+                    _ => {
+                        Err(GrammarError::MismatchedParenthesis)
+                    }
+                }
+            }
             None => {
                 Ok(CallExpr{
                     value: CallExprOptions::Empty
@@ -79,9 +96,6 @@ pub struct OrExpr {
 
 impl FromTokens<OrExpr> for OrExpr {
     fn from_tokens<'a, U: Iterator<Item = &'a TokenType>>(tokens: &mut Peekable<U>) -> Result<OrExpr, GrammarError> {
-        // return Ok(OrExpr{
-            // value: OrExprOptions::SingleExpr(CallExpr::from_tokens(tokens)?),
-        // });
         let call_expr = CallExpr::from_tokens(tokens)?;
 
         match tokens.peek() {
@@ -293,4 +307,64 @@ fn test_semicolon() {
             })),
         },
     });
+}
+
+#[test]
+fn test_parenthesis() {
+    let tokens = [
+        TokenType::Word("ls".to_string()),
+        TokenType::And,
+        TokenType::Parenthesis('('),
+        TokenType::Word("ls".to_string()),
+        TokenType::Parenthesis(')'),
+    ];
+
+    let mut it = tokens.iter().peekable();
+
+    assert_eq!(Expr::from_tokens(&mut it).unwrap(), Expr{
+        value: SemicolonExpr{
+            value: SemicolonExprOptions::SingleExpr(AndExpr{
+                value: AndExprOptions::And(OrExpr{
+                    value: OrExprOptions::SingleExpr(CallExpr{
+                        value: CallExprOptions::ProgCall(
+                            TokenType::Word("ls".to_string()), vec![]
+                        ),
+                    }),
+                }, Box::new(AndExpr{
+                    value: AndExprOptions::SingleExpr(OrExpr{
+                        value: OrExprOptions::SingleExpr(CallExpr{
+                            value: CallExprOptions::Parenthesis(Box::new(Expr{
+                                value: SemicolonExpr{
+                                    value: SemicolonExprOptions::SingleExpr(AndExpr{
+                                        value: AndExprOptions::SingleExpr(OrExpr{
+                                            value: OrExprOptions::SingleExpr(CallExpr{
+                                                value: CallExprOptions::ProgCall(
+                                                    TokenType::Word("ls".to_string()),
+                                                    vec![]
+                                                ),
+                                            }),
+                                        }),
+                                    }),
+                                },
+                            })),
+                        })
+                    }),
+                })),
+            }),
+        },
+    });
+}
+
+#[test]
+fn test_parenthesis_mismatched() {
+    let tokens = [
+        TokenType::Word("ls".to_string()),
+        TokenType::And,
+        TokenType::Parenthesis('('),
+        TokenType::Word("ls".to_string()),
+    ];
+
+    let mut it = tokens.iter().peekable();
+
+    assert_eq!(Expr::from_tokens(&mut it).unwrap_err(), GrammarError::MismatchedParenthesis);
 }
