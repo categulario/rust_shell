@@ -1,7 +1,7 @@
 use std::env;
 use std::path::Path;
 use std::process::{Command, Stdio};
-extern crate dirs;
+use dirs;
 
 #[derive(Debug)]
 pub struct Process<'a> {
