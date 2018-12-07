@@ -1,4 +1,4 @@
-use parser::TokenType;
+use crate::parser::TokenType;
 use std::iter::Peekable;
 
 #[derive(Debug, PartialEq)]
