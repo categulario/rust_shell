@@ -3,6 +3,6 @@ stages:
 
 test:
   stage: test
-  image: rust:1.30
+  image: rust:1.31
   script:
     cargo test
