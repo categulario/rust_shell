@@ -67,5 +67,5 @@ pub fn execute_cd_process(cd: String) {
 #[ignore]
 fn execute_a_single_command() {
     let mut process = vec!["echo 'hello'"];
-    assert_eq!((), receive_command(&mut process));
+    assert_eq!(Ok(()), receive_command(&mut process));
 }
