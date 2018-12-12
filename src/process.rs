@@ -9,9 +9,14 @@ pub struct Process<'a> {
     arguments: Vec<&'a str>,
 }
 
-pub fn receive_command(vector: &mut Vec<&str>) {
+pub fn receive_command(vector: &mut Vec<&str>) -> Result<(), ()> {
     let process = Process {
-        command: &vector.get(0).unwrap().to_string(),
+        command: &match vector.get(0) {
+            Some(v) => v,
+            None => {
+                return Err(());
+            },
+        }.to_string(),
         arguments: vector.drain(1..).collect(),
     };
 
@@ -25,7 +30,7 @@ pub fn receive_command(vector: &mut Vec<&str>) {
                     let _changed_dir = env::set_current_dir(&root).is_ok();
                 }
                 None => {
-                    println!("eror");
+                    println!("No se pudo determinar la carpeta home");
                 }
             }
         } else {
@@ -33,10 +38,12 @@ pub fn receive_command(vector: &mut Vec<&str>) {
             execute_cd_process(cd.to_string());
         }
     } else if process.command == "exit" {
-        println!("Es exit");
+        return Err(());
     } else {
         execute_process(process);
     }
+
+    Ok(())
 }
 
 pub fn execute_process(process: Process) {
